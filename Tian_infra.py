@@ -69,6 +69,26 @@ class Plot:
             ax.indicate_inset_zoom(axins, edgecolor='k')
         return ax
 
+    @staticmethod
+    def pixelize_plane(lens_image, herc_dict, num_pix, source_grid_scale=None):
+        if source_grid_scale is None:
+            source_grid_scale = lens_image._source_grid_scale
+        x, y, extent = lens_image.get_source_coordinates(
+            herc_dict['kwargs_lens'],
+            force=True,
+            npix_src=num_pix,
+            source_grid_scale=source_grid_scale,
+        )
+        xgrid, ygrid = jnp.meshgrid(x, y)
+        image_grid = lens_image.SourceModel.surface_brightness(
+            xgrid,
+            ygrid,
+            herc_dict['kwargs_source'],
+            pixels_x_coord=xgrid[0],
+            pixels_y_coord=ygrid[:, 0],
+        ) * lens_image.Grid.pixel_area
+        return image_grid, extent
+
 
 class ResumeInit:
     @staticmethod
