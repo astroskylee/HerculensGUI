@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Local data and generated products
+*.fits
+*.fit
+*.fz
+*.npz
+runs/
+
+# Local environment/editor files
+.DS_Store
+.env
+venv/
+.venv/

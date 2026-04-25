@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Herculens GUI</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Workflow navigation">
+        <div class="brand">
+          <div class="brand-mark">H</div>
+          <div>
+            <h1>Herculens GUI</h1>
+            <p>Lens workflow control</p>
+          </div>
+        </div>
+
+        <nav class="nav-tabs" aria-label="Workflow pages">
+          <button class="nav-tab active" type="button" data-page="image-preprocess">
+            <span class="tab-index">1</span>
+            <span>Image preprocess</span>
+          </button>
+          <button class="nav-tab" type="button" data-page="psf-fit">
+            <span class="tab-index">2</span>
+            <span>PSF fit</span>
+          </button>
+          <button class="nav-tab" type="button" data-page="lens-model">
+            <span class="tab-index">3</span>
+            <span>Lens model</span>
+          </button>
+        </nav>
+
+        <div class="sidebar-status">
+          <div class="backend-row">
+            <span id="backend-status" class="status-dot idle" aria-label="Backend status"></span>
+            <span id="backend-text">Backend not checked</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h2 id="page-title">Image preprocess</h2>
+            <p id="page-subtitle">Prepare science images, masks, noise maps, and display products.</p>
+          </div>
+          <div class="topbar-actions">
+            <button id="theme-toggle" class="secondary-button icon-button" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+              <span id="theme-icon">D</span>
+              <span id="theme-label">Dark</span>
+            </button>
+            <button id="check-backend" class="secondary-button" type="button">Check backend</button>
+            <div class="run-meta">
+              <label for="project-root">Project root</label>
+              <input id="project-root" type="text" value="/mnt/d/lensing" spellcheck="false">
+            </div>
+          </div>
+        </header>
+
+        <section id="image-preprocess" class="page active" aria-labelledby="page-title">
+          <div class="workspace-grid">
+            <form class="control-panel" data-form="image-preprocess">
+              <div class="section-heading">
+                <h3>Input image</h3>
+                <p>Choose one science image from this computer.</p>
+              </div>
+
+              <label class="file-picker">
+                <span>Image file</span>
+                <input id="image-file" name="image_file" type="file" accept=".fits,.fit,.fts,.npy,.png,.jpg,.jpeg,.tif,.tiff,image/*">
+              </label>
+              <div id="selected-image-name" class="selected-file">No file selected</div>
+
+              <div class="folder-browser">
+                <label>
+                  Current folder
+                  <input id="folder-path" type="text" spellcheck="false">
+                </label>
+                <div class="button-row">
+                  <button type="button" class="secondary-button" id="open-folder">Open folder</button>
+                  <button type="button" class="secondary-button" id="parent-folder">Parent</button>
+                </div>
+                <div id="folder-list" class="folder-list" aria-label="Folder contents">
+                  <span class="empty-list">Folder not loaded</span>
+                </div>
+              </div>
+
+              <div class="button-row">
+                <button type="button" class="primary-button" id="load-image-preview">Load image</button>
+                <button type="button" class="secondary-button" id="reset-image-view">Reset view</button>
+              </div>
+
+              <div class="cutout-panel">
+                <div class="section-heading compact-inline">
+                  <h3>Cutout</h3>
+                  <span id="cutout-center-label" class="slider-value">No center</span>
+                </div>
+                <label>
+                  Side length
+                  <input id="cutout-size" type="number" min="4" step="1" value="80">
+                  <span class="slider-value">px</span>
+                </label>
+                <button type="button" class="primary-button" id="save-cutout">Save cutout</button>
+              </div>
+
+              <div class="mtf-panel">
+                <div class="section-heading compact-inline">
+                  <h3>MTF display stretch</h3>
+                  <button type="button" class="secondary-button small" id="reset-mtf">Reset</button>
+                </div>
+                <label>
+                  Shadows
+                  <input id="mtf-shadows" type="range" min="0" max="0.95" step="0.001" value="0">
+                  <span id="mtf-shadows-value" class="slider-value">0.000</span>
+                </label>
+                <label>
+                  Midtones
+                  <input id="mtf-midtones" type="range" min="0.001" max="0.999" step="0.001" value="0.5">
+                  <span id="mtf-midtones-value" class="slider-value">0.500</span>
+                </label>
+                <label>
+                  Highlights
+                  <input id="mtf-highlights" type="range" min="0.05" max="1" step="0.001" value="1">
+                  <span id="mtf-highlights-value" class="slider-value">1.000</span>
+                </label>
+                <label>
+                  Brightness
+                  <input id="display-brightness" type="range" min="0.1" max="5" step="0.01" value="1">
+                  <span id="display-brightness-value" class="slider-value">1.00x</span>
+                </label>
+                <canvas id="mtf-curve" class="mtf-curve" width="280" height="120" aria-label="MTF curve"></canvas>
+              </div>
+            </form>
+
+            <section class="result-panel">
+              <div class="section-heading">
+                <h3>Image Preview</h3>
+                <p>Scroll to zoom, drag to pan.</p>
+              </div>
+              <div class="image-stage zoom-stage" data-preview="image-preprocess">
+                <canvas id="image-preview-canvas" class="zoom-image" aria-label="Image preview"></canvas>
+                <div id="cutout-marker" class="cutout-marker" aria-hidden="true"></div>
+                <span id="image-preview-empty">No image loaded</span>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="psf-fit" class="page" aria-labelledby="page-title">
+          <div class="workspace-grid">
+            <form class="control-panel" data-form="psf-fit">
+              <div class="section-heading">
+                <h3>PSF settings</h3>
+                <p>Fit or load a PSF kernel for the lens model.</p>
+              </div>
+
+              <label>
+                PSF input
+                <input name="psf_input" type="text" value="Herculens/Data/SliceLens/F606_slice_psf.npy">
+              </label>
+
+              <label>
+                Star catalog
+                <input name="star_catalog" type="text" placeholder="Optional catalog path">
+              </label>
+
+              <div class="form-row">
+                <label>
+                  Kernel size
+                  <input name="kernel_size" type="number" value="31" step="2">
+                </label>
+                <label>
+                  Oversampling
+                  <input name="oversampling" type="number" value="1" step="1">
+                </label>
+              </div>
+
+              <label class="checkbox-row">
+                <input name="force_odd_kernel" type="checkbox" checked>
+                <span>Force odd kernel dimensions</span>
+              </label>
+
+              <div class="button-row">
+                <button type="button" class="primary-button" data-action="run" data-endpoint="/api/psf-fit/run">Run PSF fit</button>
+                <button type="button" class="secondary-button" data-action="load-latest" data-endpoint="/api/psf-fit/latest">Load latest</button>
+              </div>
+            </form>
+
+            <section class="result-panel">
+              <div class="section-heading">
+                <h3>PSF preview</h3>
+                <p>Kernel and residual products.</p>
+              </div>
+              <div class="image-stage" data-preview="psf-fit">
+                <span>No PSF product loaded</span>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="lens-model" class="page" aria-labelledby="page-title">
+          <div class="workspace-grid">
+            <form class="control-panel" data-form="lens-model">
+              <div class="section-heading">
+                <h3>SVI run</h3>
+                <p>Parametric first stage followed by pixelated source modeling.</p>
+              </div>
+
+              <label>
+                Notebook/script
+                <input name="runner" type="text" value="Herculens/HerculensGUI/SliceLens_1chain_parametric_pixelated_svi.ipynb">
+              </label>
+
+              <label>
+                Output directory
+                <input name="output_dir" type="text" value="Herculens/HerculensGUI/runs/slicelens_svi">
+              </label>
+
+              <div class="form-row">
+                <label>
+                  Parametric steps
+                  <input name="max_iter_parametric" type="number" value="2000" step="100">
+                </label>
+                <label>
+                  Pixelated steps
+                  <input name="max_iter_pixelated" type="number" value="2000" step="100">
+                </label>
+              </div>
+
+              <div class="form-row">
+                <label>
+                  Source grid scale
+                  <input name="source_grid_scale" type="number" value="0.6" step="0.05">
+                </label>
+                <label>
+                  Seed
+                  <input name="seed" type="number" value="100" step="1">
+                </label>
+              </div>
+
+              <label class="checkbox-row">
+                <input name="use_best_pixel_size" type="checkbox" checked>
+                <span>Use get_best_pixel_size for pixelated source grid</span>
+              </label>
+
+              <div class="button-row">
+                <button type="button" class="primary-button" data-action="run" data-endpoint="/api/lens-model/run">Run lens model</button>
+                <button type="button" class="secondary-button" data-action="load-latest" data-endpoint="/api/lens-model/latest">Load latest</button>
+              </div>
+            </form>
+
+            <section class="result-panel">
+              <div class="section-heading">
+                <h3>Model result</h3>
+                <p>Four-panel visualization and loss curves.</p>
+              </div>
+              <div class="image-stage model-stage" data-preview="lens-model">
+                <img src="../runs/slicelens_svi_2k/20260425_144805_four_panel_comparison.png" alt="Latest lens model comparison">
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="log-panel" aria-label="Run log">
+          <div class="section-heading compact">
+            <h3>Run log</h3>
+            <button id="clear-log" class="secondary-button small" type="button">Clear</button>
+          </div>
+          <pre id="run-log">Ready.</pre>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
