@@ -893,6 +893,40 @@ class PowerSpectrum:
         )
         return guide.median(result.params)
 
+    @staticmethod
+    def fit_power_spectrum_init_from_parametric_source(
+        lens_image,
+        parametric_kwargs,
+        num_pix,
+        source_grid_scale,
+        k_values,
+        pixelated_prior,
+        seed,
+        max_iterations=1200,
+        learning_rate=0.02,
+        noise_factor=0.001,
+        progress_bar=True,
+    ):
+        if parametric_kwargs is None:
+            return {}
+
+        source_image, _ = Plot.pixelize_plane(
+            lens_image,
+            parametric_kwargs,
+            num_pix,
+            source_grid_scale=source_grid_scale,
+        )
+        return PowerSpectrum.fit_power_spectrum_init(
+            source_image,
+            k_values,
+            pixelated_prior,
+            seed=seed,
+            max_iterations=max_iterations,
+            learning_rate=learning_rate,
+            noise_factor=noise_factor,
+            progress_bar=progress_bar,
+        )
+
 
 class Light:
     @staticmethod
