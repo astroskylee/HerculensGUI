@@ -25,6 +25,7 @@ from corner import corner
 from jax import lax
 from matplotlib.gridspec import GridSpec
 from numpyro import distributions as dist
+from numpyro.distributions.util import lazy_property
 from numpyro.handlers import condition
 from scipy.optimize import least_squares
 import scipy
@@ -40,7 +41,6 @@ from herculens.MassModel.mass_model import MassModel
 from herculens.PointSourceModel.point_source_model import PointSourceModel
 from jax_lensing_profiles.MassModel.Profiles.CuspyNFW_ellipse_kappa import CuspyNFW_3D_fn
 from jax_lensing_profiles.MassModel.Profiles.MGE import MGE
-from power_spectrum_prior import K_grid, P_Matern, pack_fft_values
 
 
 class Plot:
@@ -212,7 +212,11 @@ class LensImageExtension(LensImage):
                 k=k_lens_light,
             )
         if not supersampled:
-            model = self.ImageNumerics.re_size_convolve(model, psf_noise_fft, unconvolved=unconvolved)
+            model = self.ImageNumerics.re_size_convolve(
+                model,
+                unconvolved=unconvolved,
+                kwargs_psf=psf_noise_fft,
+            )
         return model
 
     def trace_conjugate_points(self, kwargs_lens, k_lens=None):
@@ -627,7 +631,118 @@ class Mass:
 
 
 class PowerSpectrum:
-    K_grid = staticmethod(K_grid)
+    class K_grid:
+        def __init__(self, shape, scale=1):
+            self.Ny, self.Nx = shape
+            self.scale = scale
+
+        @lazy_property
+        def rk(self):
+            kx = 2 * np.pi * np.fft.rfftfreq(self.Nx, d=self.scale)
+            ky = 2 * np.pi * np.fft.fftfreq(self.Ny, d=self.scale)
+            return np.sqrt(ky.reshape(-1, 1) ** 2 + kx ** 2)
+
+        @lazy_property
+        def k(self):
+            kx = 2 * np.pi * np.fft.fftfreq(self.Nx, d=self.scale)
+            ky = 2 * np.pi * np.fft.fftfreq(self.Ny, d=self.scale)
+            return np.sqrt(ky.reshape(-1, 1) ** 2 + kx ** 2)
+
+    @staticmethod
+    @partial(jax.jit, static_argnums=(5,))
+    def P_Matern(k, n, sigma, rho, c=1e-20, k_zero=None):
+        r = 2 * n / rho ** 2
+        norm = sigma ** 2 * 4 * jnp.pi * n * jnp.power(r, n)
+        power = norm * jnp.power(r + k ** 2, -(n + 1))
+        if k_zero is not None:
+            power = jnp.where(k == 0, k_zero, power)
+        return power
+
+    @staticmethod
+    @partial(jax.jit, static_argnums=(1,))
+    def _odd_pack(values, n_pix):
+        n1 = n_pix // 2 + 1
+        thin_real = jax.lax.dynamic_slice(values, (0, 1), (n_pix, n1 - 1))
+        thin_imag = jnp.flip(jax.lax.dynamic_slice(values, (0, n1), (n_pix, n1 - 1)), axis=1)
+
+        first_real_slice = jax.lax.dynamic_slice(values, (1, 0), (n1 - 1, 1))
+        first_real = jnp.vstack([
+            2 * values[0, 0].reshape(1, 1),
+            first_real_slice,
+            jnp.flip(first_real_slice, axis=0),
+        ])
+
+        first_imag_slice = jax.lax.dynamic_slice(values, (n1, 0), (n1 - 1, 1))
+        first_imag = jnp.vstack([
+            jnp.zeros((1, 1)),
+            -jnp.flip(first_imag_slice, axis=0),
+            first_imag_slice,
+        ])
+
+        fft_real = jnp.hstack([first_real[:thin_real.shape[0]], thin_real])
+        fft_imag = jnp.hstack([first_imag[:thin_imag.shape[0]], thin_imag])
+        return fft_real + 1j * fft_imag
+
+    @staticmethod
+    @partial(jax.jit, static_argnums=(1,))
+    def _even_pack(values, n_pix):
+        n1 = n_pix // 2 + 1
+        thin_real = jax.lax.dynamic_slice(values, (0, 1), (n_pix, n1 - 2))
+        thin_imag = jnp.flip(jax.lax.dynamic_slice(values, (0, n1), (n_pix, n1 - 2)), axis=1)
+
+        first_real_slice = jax.lax.dynamic_slice(values, (1, 0), (n1 - 2, 1))
+        first_real = jnp.vstack([
+            2 * jax.lax.dynamic_slice(values, (0, 0), (1, 1)),
+            first_real_slice,
+            2 * jax.lax.dynamic_slice(values, (n1 - 1, 0), (1, 1)),
+            jnp.flip(first_real_slice, axis=0),
+        ])
+
+        last_real_slice = jax.lax.dynamic_slice(values, (1, n1 - 1), (n1 - 2, 1))
+        last_real = jnp.vstack([
+            2 * jax.lax.dynamic_slice(values, (0, n1 - 1), (1, 1)),
+            last_real_slice,
+            2 * jax.lax.dynamic_slice(values, (n1 - 1, n1 - 1), (1, 1)),
+            jnp.flip(last_real_slice, axis=0),
+        ])
+
+        first_imag_slice = jax.lax.dynamic_slice(values, (n1, 0), (n1 - 2, 1))
+        first_imag = jnp.vstack([
+            jnp.zeros((1, 1)),
+            -jnp.flip(first_imag_slice, axis=0),
+            jnp.zeros((1, 1)),
+            first_imag_slice,
+        ])
+
+        last_imag_slice = jax.lax.dynamic_slice(values, (n1, n1 - 1), (n1 - 2, 1))
+        last_imag = jnp.vstack([
+            jnp.zeros((1, 1)),
+            -jnp.flip(last_imag_slice, axis=0),
+            jnp.zeros((1, 1)),
+            last_imag_slice,
+        ])
+
+        delta = thin_real.shape[0] - first_real.shape[0]
+        first_real = jnp.pad(first_real, ((0, delta), (0, 0)))
+        last_real = jnp.pad(last_real, ((0, delta), (0, 0)))
+        first_imag = jnp.pad(first_imag, ((0, delta), (0, 0)))
+        last_imag = jnp.pad(last_imag, ((0, delta), (0, 0)))
+
+        fft_real = jnp.hstack([first_real, thin_real, last_real])
+        fft_imag = jnp.hstack([first_imag, thin_imag, last_imag])
+        return fft_real + 1j * fft_imag
+
+    @staticmethod
+    @jax.jit
+    def pack_fft_values(values):
+        ny, nx = values.shape
+        assert ny == nx, 'Input array must be square'
+        return jax.lax.cond(
+            nx % 2 == 0,
+            partial(PowerSpectrum._even_pack, n_pix=nx),
+            partial(PowerSpectrum._odd_pack, n_pix=nx),
+            jnp.sqrt(0.5) * values,
+        )
 
     class TruncatedWedge(dist.Distribution):
         def __init__(self, a, low, b):
@@ -678,7 +793,7 @@ class PowerSpectrum:
             sigma = numpyro.sample(f'sigma_{param_name}', dist.LogUniform(sigma_low, sigma_high))
             rho = numpyro.sample(f'rho_{param_name}', dist.LogNormal(2.1, 1.1))
 
-        P = P_Matern(k, n[0], sigma[0], rho[0], k_zero=k_zero)
+        P = PowerSpectrum.P_Matern(k, n[0], sigma[0], rho[0], k_zero=k_zero)
         scale = jnp.sqrt(P)
 
         ny, nx = scale.shape
@@ -690,7 +805,7 @@ class PowerSpectrum:
                 )
 
         gp = jnp.fft.irfft2(
-            pack_fft_values(pixels_wn * scale),
+            PowerSpectrum.pack_fft_values(pixels_wn * scale),
             s=scale.shape,
             norm='ortho',
         )
@@ -715,8 +830,8 @@ class PowerSpectrum:
         sigma = jnp.ravel(jnp.asarray(params[f'sigma_{param_name}']))[0]
         rho = jnp.ravel(jnp.asarray(params[f'rho_{param_name}']))[0]
         pixels_wn = jnp.asarray(params[f'pixels_wn_{param_name}'], dtype=jnp.float64)
-        scale = jnp.sqrt(P_Matern(k_values, n, sigma, rho, k_zero=k_zero))
-        pixels = jnp.fft.irfft2(pack_fft_values(pixels_wn * scale), s=scale.shape, norm='ortho')
+        scale = jnp.sqrt(PowerSpectrum.P_Matern(k_values, n, sigma, rho, k_zero=k_zero))
+        pixels = jnp.fft.irfft2(PowerSpectrum.pack_fft_values(pixels_wn * scale), s=scale.shape, norm='ortho')
         if positive:
             pixels = jax.nn.softplus(100 * pixels) / 100.0
         return pixels
