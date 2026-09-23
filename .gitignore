@@ -4,10 +4,32 @@ __pycache__/
 
 # Local data and generated products
 *.fits
+!web_gui/defaults/Euclid_default*_PSF.fits
 *.fit
 *.fz
 *.npz
 runs/
+batch_runs/
+results/
+mock_lenses/
+euclid_cutouts/
+tmp/
+log/
+web_gui/logs/
+*.log
+*.pid
+*.bak_*
+project.json
+web_gui_settings.local.json
+*.local.json
+credentials.txt
+cred.txt
+psw.txt
+.ssh/
+id_rsa*
+id_ed25519*
+*.pem
+*.key
 
 # Local environment/editor files
 .DS_Store

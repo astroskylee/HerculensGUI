@@ -4,7 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Herculens GUI</title>
-    <link rel="stylesheet" href="./styles.css">
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <link rel="stylesheet" href="./styles.css?v=20260826-fixed-mass-map">
   </head>
   <body>
     <div class="app-shell">
@@ -18,19 +20,327 @@
         </div>
 
         <nav class="nav-tabs" aria-label="Workflow pages">
-          <button class="nav-tab active" type="button" data-page="image-preprocess">
+          <button class="nav-tab active" type="button" data-page="euclid-cutout" data-stage-state="optional">
             <span class="tab-index">1</span>
-            <span>Image preprocess</span>
+            <span class="tab-copy">
+              <span class="tab-label">Get Euclid cutout</span>
+              <span class="tab-state">Optional</span>
+            </span>
+            <span class="tab-status" aria-hidden="true"></span>
           </button>
-          <button class="nav-tab" type="button" data-page="psf-fit">
+          <button class="nav-tab" type="button" data-page="image-preprocess" data-stage-state="pending">
             <span class="tab-index">2</span>
-            <span>PSF fit</span>
+            <span class="tab-copy">
+              <span class="tab-label">Image preprocess</span>
+              <span class="tab-state">Needs cutout</span>
+            </span>
+            <span class="tab-status" aria-hidden="true"></span>
           </button>
-          <button class="nav-tab" type="button" data-page="lens-model">
+          <button class="nav-tab" type="button" data-page="psf-fit" data-stage-state="pending">
             <span class="tab-index">3</span>
-            <span>Lens model</span>
+            <span class="tab-copy">
+              <span class="tab-label">PSF fit</span>
+              <span class="tab-state">Needs PSF</span>
+            </span>
+            <span class="tab-status" aria-hidden="true"></span>
+          </button>
+          <button class="nav-tab" type="button" data-page="mask" data-stage-state="pending">
+            <span class="tab-index">4</span>
+            <span class="tab-copy">
+              <span class="tab-label">Mask</span>
+              <span class="tab-state">Needs mask</span>
+            </span>
+            <span class="tab-status" aria-hidden="true"></span>
+          </button>
+          <button class="nav-tab" type="button" data-page="lens-model" data-stage-state="pending">
+            <span class="tab-index">5</span>
+            <span class="tab-copy">
+              <span class="tab-label">Lens model</span>
+              <span class="tab-state">Not generated</span>
+            </span>
+            <span class="tab-status" aria-hidden="true"></span>
           </button>
         </nav>
+
+        <form class="sidebar-tool-panel psf-sidebar-panel" data-form="psf-fit">
+          <div class="section-heading">
+            <h3>PSF settings</h3>
+          </div>
+
+          <div class="segmented-control compact-segmented" role="radiogroup" aria-label="PSF source mode">
+            <label>
+              <input type="radio" name="psf_mode" value="input" checked>
+              <span>Input PSF</span>
+            </label>
+            <label>
+              <input type="radio" name="psf_mode" value="auto">
+              <span>Auto PSF</span>
+            </label>
+          </div>
+
+          <div class="psf-mode-panel" data-psf-mode-panel="input">
+            <div class="psf-setting-block">
+              <div class="psf-block-heading">
+                <h4>Input PSF</h4>
+              </div>
+            <label>
+              PSF path
+              <input id="psf-input-path" name="psf_input" type="text" placeholder="Optional .npy or .fits path">
+            </label>
+
+            <label class="file-picker">
+              PSF file
+              <input id="psf-input-file" name="psf_file" type="file" accept=".fits,.fit,.fts,.npy,.png,.jpg,.jpeg,.tif,.tiff,image/*">
+            </label>
+
+            <button type="button" class="secondary-button" id="psf-load-input">Load input PSF</button>
+            <button type="button" class="secondary-button" id="psf-default-euclid">Default Euclid PSF</button>
+            <button type="button" class="secondary-button" id="psf-default-euclid-y">Default Euclid Y PSF</button>
+            <button type="button" class="secondary-button" id="psf-default-euclid-j">Default Euclid J PSF</button>
+            <button type="button" class="secondary-button" id="psf-default-euclid-h">Default Euclid H PSF</button>
+            </div>
+          </div>
+
+          <div class="psf-mode-panel" data-psf-mode-panel="auto" hidden>
+            <div class="psf-setting-block">
+              <div class="psf-block-heading">
+                <h4>Find PSF</h4>
+              </div>
+              <label>
+                Science image
+                <input id="psf-science-path" name="science_image" type="text" placeholder="Uses the loaded Image Preprocess file">
+              </label>
+
+              <div class="prior-grid compact-prior-grid psf-compact-grid">
+                <label class="prior-field" title="PSF cutout kernel size">
+                  <span class="prior-label">k</span>
+                  <input id="psf-kernel-size" name="kernel_size" type="number" value="51" step="2" min="3">
+                </label>
+                <label class="prior-field" title="Finder FWHM in pixels">
+                  <span class="prior-label">FWHM</span>
+                  <input id="psf-fwhm" name="fwhm" type="number" value="1.6" step="0.1" min="0.5">
+                </label>
+                <label class="prior-field" title="Star-finder threshold sigma">
+                  <span class="prior-label">&sigma;<sub>thr</sub></span>
+                  <input id="psf-threshold-sigma" name="threshold_sigma" type="number" value="5" step="0.5" min="1">
+                </label>
+              </div>
+
+              <button type="button" class="secondary-button" id="psf-find-stars">Find PSF</button>
+            </div>
+
+            <div class="psf-setting-block">
+              <div class="psf-block-heading">
+                <h4>Run PSF</h4>
+              </div>
+              <label>
+                Selected IDs
+                <input id="psf-selected-ids" name="selected_ids" type="text" placeholder="Example: 36, 38, 39">
+              </label>
+
+              <div class="prior-grid compact-prior-grid psf-compact-grid">
+                <label class="prior-field" title="SVI iterations">
+                  <span class="prior-label">iter</span>
+                  <input id="psf-svi-steps" name="svi_steps" type="number" value="2000" step="100" min="1">
+                </label>
+                <label class="prior-field" title="Supersampling factor">
+                  <span class="prior-label">SS</span>
+                  <select id="psf-ss-factor" name="ss_factor">
+                    <option value="3" selected>3</option>
+                    <option value="1">1</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="button-row psf-run-actions">
+            <button type="button" class="primary-button" id="psf-run-fit">Run PSF fit</button>
+            <button type="button" class="secondary-button" id="psf-stop-fit" disabled>Stop</button>
+          </div>
+        </form>
+
+        <form class="sidebar-tool-panel mask-sidebar-panel" data-form="mask">
+          <div class="section-heading">
+            <h3>Mask editor</h3>
+          </div>
+
+          <div class="segmented-control compact-segmented" role="radiogroup" aria-label="Mask draw tool">
+            <label>
+              <input type="radio" name="mask_tool" value="line" checked>
+              <span>Line</span>
+            </label>
+            <label>
+              <input type="radio" name="mask_tool" value="brush">
+              <span>Brush</span>
+            </label>
+          </div>
+
+          <div class="segmented-control compact-segmented" role="radiogroup" aria-label="Mask edit mode">
+            <label>
+              <input type="radio" name="mask_mode" value="add" checked>
+              <span>Add</span>
+            </label>
+            <label>
+              <input type="radio" name="mask_mode" value="subtract">
+              <span>Subtract</span>
+            </label>
+          </div>
+
+          <label>
+            Mask type
+            <select id="mask-type">
+              <option value="mask_1" selected>mask_1</option>
+              <option value="mask_2">mask_2</option>
+              <option value="mask_out">mask_out</option>
+            </select>
+          </label>
+
+          <label>
+            Brush radius
+            <input id="mask-brush-radius" type="range" min="0" max="20" step="1" value="4">
+            <span id="mask-brush-radius-value" class="slider-value">4 px</span>
+          </label>
+
+          <div class="button-row">
+            <button type="button" class="secondary-button" id="mask-clear">Clear mask</button>
+          </div>
+
+          <button type="button" class="primary-button" id="mask-save">Save mask FITS</button>
+
+          <div class="mask-lens-light-panel">
+            <div class="section-heading compact-inline">
+              <h3>Lens light subtraction</h3>
+              <span id="mask-subtraction-status" class="slider-value">Not run</span>
+            </div>
+            <div class="mask-subtraction-settings">
+              <label>
+                N Gaussian
+                <input id="mask-lens-light-n-gauss" type="number" min="1" step="1" value="8">
+              </label>
+              <label>
+                Sigma min
+                <input id="mask-lens-light-sigma-min" type="number" min="0.0001" step="0.001" value="0.01">
+              </label>
+              <label>
+                Sigma max
+                <input id="mask-lens-light-sigma-max" type="text" value="auto" placeholder="0.4 × image side">
+              </label>
+              <label title="Maximum absolute Gaussian center coordinate in x and y, relative to the image center">
+                Gaussian center max
+                <input id="mask-lens-light-center-max-offset" type="number" min="0.001" step="0.01" value="0.4">
+              </label>
+              <label>
+                Semilinear MGE steps
+                <input id="mask-lens-light-svi-steps" type="number" min="0" step="1" value="0">
+              </label>
+              <label>
+                SVI steps
+                <input id="mask-lens-light-unconstrained-svi-steps" type="number" min="0" step="100" value="2000">
+              </label>
+              <label>
+                Result
+                <select id="mask-lens-light-result-choice">
+                  <option value="unconstrained">SVI</option>
+                  <option value="constrained">Semilinear MGE</option>
+                </select>
+              </label>
+              <label title="Leave blank to disable background subtraction. If set, subtract the median of the four corner boxes with this pixel size.">
+                BG corner px
+                <input id="mask-lens-light-bg-corner" type="number" min="1" step="1" placeholder="off">
+              </label>
+            </div>
+            <div class="button-row">
+              <button type="button" class="primary-button" id="mask-lens-light-semilinear">Run semilinear MGE</button>
+              <button type="button" class="primary-button" id="mask-lens-light-subtraction">Lens light subtraction</button>
+              <button type="button" class="secondary-button" id="mask-lens-light-subtraction-gpu">Run GPU lens light</button>
+              <button type="button" class="secondary-button danger-button" id="mask-lens-light-stop" disabled>Stop</button>
+            </div>
+            <div class="mask-subtraction-mtf">
+              <div class="mtf-section-heading">
+                <strong>Cutout MTF</strong>
+                <div class="mtf-button-group">
+                  <button type="button" class="secondary-button compact-button" id="mask-cutout-mtf-auto">Auto</button>
+                  <button type="button" class="secondary-button compact-button" id="mask-cutout-mtf-apply">Apply</button>
+                </div>
+              </div>
+              <label>
+                Shadows
+                <input id="mask-cutout-mtf-shadows" type="range" min="0" max="1" step="0.0001" value="0">
+                <input id="mask-cutout-mtf-shadows-value" class="slider-value mtf-value-input" type="number" min="0" max="1" step="0.0001" value="0.0000" aria-label="Cutout MTF shadows value">
+              </label>
+              <label>
+                Midtones
+                <input id="mask-cutout-mtf-midtones" type="range" min="0" max="1" step="0.0001" value="0.125">
+                <input id="mask-cutout-mtf-midtones-value" class="slider-value mtf-value-input" type="number" min="0" max="1" step="0.0001" value="0.1250" aria-label="Cutout MTF midtones value">
+              </label>
+              <label>
+                Highlights
+                <input id="mask-cutout-mtf-highlights" type="range" min="0" max="1" step="0.0001" value="1">
+                <input id="mask-cutout-mtf-highlights-value" class="slider-value mtf-value-input" type="number" min="0" max="1" step="0.0001" value="1.0000" aria-label="Cutout MTF highlights value">
+              </label>
+            </div>
+            <div class="mask-subtraction-mtf">
+              <div class="mtf-section-heading">
+                <strong>Lens light MTF</strong>
+                <div class="mtf-button-group">
+                  <button type="button" class="secondary-button compact-button" id="mask-subtraction-mtf-auto">Auto</button>
+                  <button type="button" class="secondary-button compact-button" id="mask-subtraction-mtf-apply">Apply</button>
+                </div>
+              </div>
+              <label>
+                Shadows
+                <input id="mask-subtraction-mtf-shadows" type="range" min="0" max="1" step="0.0001" value="0">
+                <input id="mask-subtraction-mtf-shadows-value" class="slider-value mtf-value-input" type="number" min="0" max="1" step="0.0001" value="0.0000" aria-label="Lens light MTF shadows value">
+              </label>
+              <label>
+                Midtones
+                <input id="mask-subtraction-mtf-midtones" type="range" min="0" max="1" step="0.0001" value="0.125">
+                <input id="mask-subtraction-mtf-midtones-value" class="slider-value mtf-value-input" type="number" min="0" max="1" step="0.0001" value="0.1250" aria-label="Lens light MTF midtones value">
+              </label>
+              <label>
+                Highlights
+                <input id="mask-subtraction-mtf-highlights" type="range" min="0" max="1" step="0.0001" value="1">
+                <input id="mask-subtraction-mtf-highlights-value" class="slider-value mtf-value-input" type="number" min="0" max="1" step="0.0001" value="1.0000" aria-label="Lens light MTF highlights value">
+              </label>
+            </div>
+            <div class="mask-subtraction-stage mask-subtraction-stage-hidden" hidden>
+              <canvas id="mask-subtraction-preview" aria-label="Lens light subtracted image" hidden></canvas>
+              <span id="mask-subtraction-empty">Run lens light subtraction.</span>
+            </div>
+          </div>
+
+          <div class="mask-conjugate-panel">
+            <div class="section-heading compact-inline">
+              <h3>Conjugate point</h3>
+              <span id="mask-conjugate-status" class="slider-value">P1 0, P2 0</span>
+            </div>
+            <label>
+              Plane
+              <select id="mask-conjugate-plane">
+                <option value="source1" selected>Plane 1</option>
+                <option value="source2">Plane 2</option>
+              </select>
+            </label>
+            <label>
+              Click mode
+              <select id="mask-conjugate-click-mode">
+                <option value="click">Click</option>
+                <option value="gaussian">Fit Gaussian</option>
+                <option value="brightest" selected>Brightest pixel</option>
+              </select>
+            </label>
+            <div class="button-row">
+              <button type="button" class="secondary-button" id="mask-conjugate-point">Conjugate point</button>
+              <button type="button" class="secondary-button" id="mask-clear-conjugate">Clear all points</button>
+            </div>
+          </div>
+
+          <div class="section-heading compact-inline">
+            <h3>Status</h3>
+            <span id="mask-status" class="slider-value">No cutout loaded</span>
+          </div>
+        </form>
 
         <div class="sidebar-status">
           <div class="backend-row">
@@ -42,24 +352,305 @@
 
       <main class="main">
         <header class="topbar">
-          <div>
-            <h2 id="page-title">Image preprocess</h2>
-            <p id="page-subtitle">Prepare science images, masks, noise maps, and display products.</p>
+          <div class="topbar-heading">
+            <span class="page-kicker">Scientific workspace</span>
+            <h2 id="page-title">Get Euclid cutout</h2>
+            <p id="page-subtitle">Download a Euclid cutout and inspect photometry.</p>
           </div>
-          <div class="topbar-actions">
+          <div class="topbar-utilities">
             <button id="theme-toggle" class="secondary-button icon-button" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
-              <span id="theme-icon">D</span>
+              <span id="theme-icon">◐</span>
               <span id="theme-label">Dark</span>
             </button>
+            <button id="settings-open" class="secondary-button" type="button">Settings</button>
             <button id="check-backend" class="secondary-button" type="button">Check backend</button>
-            <div class="run-meta">
-              <label for="project-root">Project root</label>
-              <input id="project-root" type="text" value="/mnt/d/lensing" spellcheck="false">
+          </div>
+          <div class="project-commandbar">
+            <div class="project-commandbar-label">
+              <span>Current project</span>
+              <strong id="current-project-state">Loaded workspace</strong>
             </div>
+            <div class="run-meta project-name-meta">
+              <label for="project-name">Name</label>
+              <div class="project-name-row">
+                <input id="project-name" type="text" spellcheck="false" placeholder="Project name">
+                <button id="rename-project" class="secondary-button" type="button">Rename project</button>
+              </div>
+            </div>
+            <div class="run-meta compact-meta">
+              <label for="project-select">Quick switch</label>
+              <select id="project-select"></select>
+            </div>
+            <button id="choose-project" class="secondary-button" type="button">Choose project</button>
+            <button id="start-new-model" class="primary-button" type="button">New project</button>
           </div>
         </header>
+        <div id="settings-modal" class="modal-backdrop" hidden>
+          <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <div class="section-heading compact-inline">
+              <div>
+                <h3 id="settings-title">Settings</h3>
+                <p id="settings-path">Local runtime settings</p>
+              </div>
+              <button id="settings-close" class="secondary-button" type="button">Close</button>
+            </div>
+            <form id="settings-form" class="settings-form">
+              <label>
+                <span>Herculens Python</span>
+                <input id="settings-herculens-python" name="herculens_python" type="text" spellcheck="false">
+              </label>
+              <div class="settings-action-row">
+                <button class="secondary-button" type="button" data-settings-check="herculens_python">Check Herculens</button>
+              </div>
 
-        <section id="image-preprocess" class="page active" aria-labelledby="page-title">
+              <label>
+                <span>Euclid Python</span>
+                <input id="settings-euclid-python" name="euclid_python" type="text" spellcheck="false">
+              </label>
+              <div class="settings-action-row">
+                <button class="secondary-button" type="button" data-settings-check="euclid_python">Check Euclid</button>
+              </div>
+
+              <label>
+                <span>Photo-z Python</span>
+                <input id="settings-photoz-python" name="photoz_python" type="text" spellcheck="false">
+              </label>
+              <div class="settings-action-row">
+                <button class="secondary-button" type="button" data-settings-check="photoz_python">Check Photo-z</button>
+              </div>
+
+              <label>
+                <span>Phosphoros root</span>
+                <input id="settings-phosphoros-root" name="phosphoros_root" type="text" spellcheck="false">
+              </label>
+
+              <div id="settings-status" class="settings-status">Ready.</div>
+              <div class="settings-footer">
+                <button id="settings-save" class="primary-button" type="submit">Save settings</button>
+              </div>
+            </form>
+          </section>
+        </div>
+        <div id="project-chooser-modal" class="modal-backdrop" hidden>
+          <section class="settings-panel project-chooser-panel" role="dialog" aria-modal="true" aria-labelledby="project-chooser-title">
+            <div class="section-heading compact-inline">
+              <div>
+                <h3 id="project-chooser-title">Choose project</h3>
+                <p>Click a project to load it. Right-click for project actions.</p>
+              </div>
+              <button id="project-chooser-close" class="secondary-button" type="button">Close</button>
+            </div>
+            <div class="project-chooser-toolbar">
+              <label class="project-search-field" for="project-chooser-search">
+                <span>Search</span>
+                <input id="project-chooser-search" type="search" placeholder="Name, coordinate, folder, or comment" autocomplete="off">
+              </label>
+              <label class="project-filter-field" for="project-chooser-score">
+                <span>Score</span>
+                <select id="project-chooser-score">
+                  <option value="all">All scores</option>
+                  <option value="3">3+</option>
+                  <option value="4">4+</option>
+                  <option value="5">5 only</option>
+                </select>
+              </label>
+              <label class="project-filter-field" for="project-chooser-sort">
+                <span>Sort</span>
+                <select id="project-chooser-sort">
+                  <option value="score">Score, then updated</option>
+                  <option value="updated">Recently updated</option>
+                  <option value="name">Project name</option>
+                </select>
+              </label>
+              <div class="segmented-control compact-segmented" role="radiogroup" aria-label="Project chooser view">
+                <label>
+                  <input id="project-chooser-view-thumbnail" type="radio" name="project_chooser_view" value="thumbnail" checked>
+                  <span>Thumbnail</span>
+                </label>
+                <label>
+                  <input id="project-chooser-view-list" type="radio" name="project_chooser_view" value="list">
+                  <span>List</span>
+                </label>
+              </div>
+            </div>
+            <div id="project-chooser-status" class="project-chooser-status" role="status" aria-live="polite">Loading projects...</div>
+            <div id="project-chooser-grid" class="project-chooser-grid"></div>
+          </section>
+        </div>
+        <div id="activity-status" class="activity-status" role="status" aria-live="polite">Ready.</div>
+
+        <section id="euclid-cutout" class="page active" aria-labelledby="page-title">
+          <div class="euclid-workspace">
+            <form class="control-panel" data-form="euclid-cutout">
+              <div class="section-heading">
+                <h3>Euclid query</h3>
+                <p>Download one Euclid cutout around a sky position.</p>
+              </div>
+
+              <div class="form-row">
+                <label>
+                  RA
+                  <input id="euclid-ra" name="ra" type="number" value="" step="0.000001" placeholder="deg">
+                </label>
+                <label>
+                  Dec
+                  <input id="euclid-dec" name="dec" type="number" value="" step="0.000001" placeholder="deg">
+                </label>
+              </div>
+
+              <div class="form-row euclid-size-row">
+                <label>
+                  Cutout size
+                  <input id="euclid-cutout-size" name="cutout_size" type="number" value="10" step="1" min="1">
+                  <span class="slider-value">arcsec radius</span>
+                </label>
+                <button type="button" class="secondary-button" id="euclid-generate-project-name">Auto project name</button>
+              </div>
+
+              <div class="form-row euclid-credential-row">
+                <label>
+                  Euclid username
+                  <input id="euclid-username" name="username" type="text" autocomplete="username">
+                </label>
+                <label>
+                  Euclid password
+                  <input id="euclid-password" name="password" type="password" autocomplete="current-password">
+                </label>
+              </div>
+
+              <div class="button-row">
+                <button type="button" class="primary-button" id="euclid-run">Get Euclid cutout</button>
+                <button type="button" class="secondary-button" id="legacy-run">Get DESI cutout</button>
+              </div>
+
+              <details class="control-group" id="euclid-display-group">
+                <summary>Display stretch</summary>
+              <div class="mtf-panel control-group-body">
+                <div class="section-heading compact-inline">
+                  <h3>MTF display stretch</h3>
+                  <button type="button" class="secondary-button small" id="euclid-reset-mtf">Reset</button>
+                </div>
+                <label>
+                  Shadows
+                  <input id="euclid-mtf-shadows" type="range" min="0" max="0.95" step="0.001" value="0">
+                  <span id="euclid-mtf-shadows-value" class="slider-value">0.000</span>
+                </label>
+                <label>
+                  Midtones
+                  <input id="euclid-mtf-midtones" type="range" min="0" max="1" step="0.001" value="0.5">
+                  <span id="euclid-mtf-midtones-value" class="slider-value">0.500</span>
+                </label>
+                <label>
+                  Highlights
+                  <input id="euclid-mtf-highlights" type="range" min="0.05" max="1" step="0.001" value="1">
+                  <span id="euclid-mtf-highlights-value" class="slider-value">1.000</span>
+                </label>
+              </div>
+              </details>
+
+              <details class="control-group" id="euclid-photometry-group">
+                <summary>Photometry and photo-z</summary>
+              <div class="photometry-panel control-group-body">
+                <div class="section-heading compact-inline">
+                  <h3>Photometry</h3>
+                  <div class="inline-button-group">
+                    <button type="button" class="secondary-button small" id="euclid-photometry-toggle">测光</button>
+                    <button type="button" class="secondary-button small" id="euclid-photoz-toggle">测光红移</button>
+                  </div>
+                </div>
+                <label>
+                  Magnitude system
+                  <select id="euclid-mag-system">
+                    <option value="ab" selected>AB</option>
+                    <option value="vega">Vega</option>
+                  </select>
+                </label>
+                <div class="form-row">
+                  <label>
+                    Aperture radius
+                    <input id="euclid-aperture-radius" type="number" value="2" step="0.5" min="0.5">
+                    <span class="slider-value">px</span>
+                  </label>
+                  <label>
+                    BG annulus width
+                    <input id="euclid-annulus-width" type="number" value="2" step="0.5" min="0">
+                    <span class="slider-value">px</span>
+                  </label>
+                </div>
+                <div class="photoz-band-row" aria-label="Photo-z bands">
+                  <label class="compact-checkbox"><input type="checkbox" data-photoz-band="VIS" checked><span>VIS</span></label>
+                  <label class="compact-checkbox"><input type="checkbox" data-photoz-band="NIR_Y" checked><span>Y</span></label>
+                  <label class="compact-checkbox"><input type="checkbox" data-photoz-band="NIR_J" checked><span>J</span></label>
+                  <label class="compact-checkbox"><input type="checkbox" data-photoz-band="NIR_H" checked><span>H</span></label>
+                  <label class="compact-checkbox"><input type="checkbox" data-photoz-band="g" checked><span>g</span></label>
+                  <label class="compact-checkbox"><input type="checkbox" data-photoz-band="r" checked><span>r</span></label>
+                  <label class="compact-checkbox"><input type="checkbox" data-photoz-band="i" checked><span>i</span></label>
+                  <label class="compact-checkbox"><input type="checkbox" data-photoz-band="z" checked><span>z</span></label>
+                </div>
+                <div id="euclid-photometry-readout" class="photometry-readout">Move mouse over the cutout.</div>
+              </div>
+              </details>
+
+            </form>
+
+            <section class="result-panel euclid-preview-panel">
+              <div class="section-heading">
+                <div>
+                  <h3>Cutout preview</h3>
+                  <p id="euclid-preview-meta">No cutout loaded.</p>
+                </div>
+              </div>
+              <div class="euclid-preview-body">
+                <div class="euclid-stage">
+                  <div id="euclid-plot-frame" class="euclid-plot-frame">
+                    <canvas id="euclid-preview-canvas" aria-label="Euclid cutout preview"></canvas>
+                    <div id="euclid-axis-x" class="euclid-axis euclid-axis-x" aria-hidden="true"></div>
+                    <div id="euclid-axis-y" class="euclid-axis euclid-axis-y" aria-hidden="true"></div>
+                    <div class="euclid-axis-title euclid-axis-title-x">arcsec</div>
+                    <div class="euclid-axis-title euclid-axis-title-y">arcsec</div>
+                  </div>
+                  <div id="euclid-colorbar" class="euclid-colorbar" aria-hidden="true">
+                    <div class="euclid-colorbar-unit">mag/arcsec^2</div>
+                    <div class="euclid-colorbar-scale">
+                      <div class="euclid-colorbar-gradient"></div>
+                      <div id="euclid-colorbar-ticks" class="euclid-colorbar-ticks"></div>
+                    </div>
+                  </div>
+                  <div id="euclid-annulus-overlay" class="euclid-annulus-overlay" aria-hidden="true"></div>
+                  <div id="euclid-aperture-overlay" class="euclid-photometry-circle euclid-aperture-overlay" aria-hidden="true"></div>
+                  <span id="euclid-preview-empty">Run Get Euclid cutout to download and display a FITS product.</span>
+                </div>
+                <div class="preview-tools euclid-preview-tools">
+                  <label>
+                    Image
+                    <select id="cutout-image-select" disabled>
+                      <option value="">No cutout loaded</option>
+                    </select>
+                  </label>
+                  <button type="button" class="secondary-button small" id="euclid-display-mode">Show mag/arcsec^2</button>
+                  <div class="colorbar-bound-row" aria-label="Surface brightness colorbar bounds">
+                    <label>
+                      SB lower
+                      <input id="euclid-sb-lower" type="number" step="0.01" placeholder="auto">
+                    </label>
+                    <label>
+                      SB upper
+                      <input id="euclid-sb-upper" type="number" step="0.01" placeholder="auto">
+                    </label>
+                  </div>
+                  <label>
+                    Preview size
+                    <input id="euclid-preview-scale" type="range" min="25" max="1000" step="5" value="100">
+                    <span id="euclid-preview-scale-value" class="slider-value">100%</span>
+                  </label>
+                  <span id="euclid-zeropoint" class="slider-value">ZP: none</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="image-preprocess" class="page" aria-labelledby="page-title">
           <div class="workspace-grid">
             <form class="control-panel" data-form="image-preprocess">
               <div class="section-heading">
@@ -67,26 +658,56 @@
                 <p>Choose one science image from this computer.</p>
               </div>
 
+              <details class="control-group" id="image-input-group" name="image-preprocess-controls" open>
+                <summary>Image and RMS files</summary>
+              <div class="control-group-body">
+              <label>
+                Project folder path
+                <input id="folder-path" type="text" spellcheck="false" placeholder="Full path to this project folder">
+              </label>
+
+              <div class="button-row">
+                <button type="button" class="secondary-button" id="set-project-folder">Use image folder</button>
+                <button type="button" class="secondary-button" id="open-folder">Open folder</button>
+              </div>
+
+              <label>
+                Input image path
+                <input id="input-image-path" type="text" spellcheck="false" placeholder="Full path to FITS / NPY / image file">
+              </label>
+
               <label class="file-picker">
                 <span>Image file</span>
                 <input id="image-file" name="image_file" type="file" accept=".fits,.fit,.fts,.npy,.png,.jpg,.jpeg,.tif,.tiff,image/*">
               </label>
               <div id="selected-image-name" class="selected-file">No file selected</div>
 
+              <label>
+                Input RMS path
+                <input id="input-rms-path" type="text" spellcheck="false" placeholder="Full path to RMS / errormap FITS file">
+              </label>
+
+              <label class="file-picker">
+                <span>RMS file</span>
+                <input id="rms-file" name="rms_file" type="file" accept=".fits,.fit,.fts">
+              </label>
+              <div id="selected-rms-name" class="selected-file">No RMS file selected</div>
+
+              <div class="button-row">
+                <button type="button" class="secondary-button" id="load-rms-file">Use RMS for lens model</button>
+              </div>
+
               <div class="folder-browser">
-                <label>
-                  Current folder
-                  <input id="folder-path" type="text" spellcheck="false">
-                </label>
-                <div class="button-row">
-                  <button type="button" class="secondary-button" id="open-folder">Open folder</button>
-                  <button type="button" class="secondary-button" id="parent-folder">Parent</button>
-                </div>
                 <div id="folder-list" class="folder-list" aria-label="Folder contents">
                   <span class="empty-list">Folder not loaded</span>
                 </div>
               </div>
+              </div>
+              </details>
 
+              <details class="control-group" id="image-cutout-group" name="image-preprocess-controls">
+                <summary>Cutout and background</summary>
+              <div class="control-group-body">
               <div class="button-row">
                 <button type="button" class="primary-button" id="load-image-preview">Load image</button>
                 <button type="button" class="secondary-button" id="reset-image-view">Reset view</button>
@@ -105,7 +726,24 @@
                 <button type="button" class="primary-button" id="save-cutout">Save cutout</button>
               </div>
 
-              <div class="mtf-panel">
+              <div class="bg-panel">
+                <div class="section-heading compact-inline">
+                  <h3>Background box</h3>
+                  <span id="bg-box-label" class="slider-value">Right click image</span>
+                </div>
+                <label>
+                  Side length
+                  <input id="bg-box-size" type="number" min="4" step="1" value="80">
+                  <span class="slider-value">px</span>
+                </label>
+                <button type="button" class="secondary-button" id="clear-bg-box">Clear bg box</button>
+              </div>
+              </div>
+              </details>
+
+              <details class="control-group" id="image-display-group" name="image-preprocess-controls">
+                <summary>Display stretch</summary>
+              <div class="mtf-panel control-group-body">
                 <div class="section-heading compact-inline">
                   <h3>MTF display stretch</h3>
                   <button type="button" class="secondary-button small" id="reset-mtf">Reset</button>
@@ -117,7 +755,7 @@
                 </label>
                 <label>
                   Midtones
-                  <input id="mtf-midtones" type="range" min="0.001" max="0.999" step="0.001" value="0.5">
+                  <input id="mtf-midtones" type="range" min="0" max="1" step="0.001" value="0.5">
                   <span id="mtf-midtones-value" class="slider-value">0.500</span>
                 </label>
                 <label>
@@ -125,13 +763,9 @@
                   <input id="mtf-highlights" type="range" min="0.05" max="1" step="0.001" value="1">
                   <span id="mtf-highlights-value" class="slider-value">1.000</span>
                 </label>
-                <label>
-                  Brightness
-                  <input id="display-brightness" type="range" min="0.1" max="5" step="0.01" value="1">
-                  <span id="display-brightness-value" class="slider-value">1.00x</span>
-                </label>
                 <canvas id="mtf-curve" class="mtf-curve" width="280" height="120" aria-label="MTF curve"></canvas>
               </div>
+              </details>
             </form>
 
             <section class="result-panel">
@@ -141,81 +775,126 @@
               </div>
               <div class="image-stage zoom-stage" data-preview="image-preprocess">
                 <canvas id="image-preview-canvas" class="zoom-image" aria-label="Image preview"></canvas>
+                <div id="psf-overlay" class="psf-overlay" aria-hidden="true"></div>
                 <div id="cutout-marker" class="cutout-marker" aria-hidden="true"></div>
+                <div id="bg-box-marker" class="bg-box-marker" aria-hidden="true"></div>
+                <div id="image-pan-x" class="pan-control pan-x disabled" role="slider" aria-label="Horizontal pan" aria-valuemin="-1000" aria-valuemax="1000" aria-valuenow="0">
+                  <div class="pan-thumb"></div>
+                </div>
+                <div id="image-pan-y" class="pan-control pan-y disabled" role="slider" aria-label="Vertical pan" aria-valuemin="-1000" aria-valuemax="1000" aria-valuenow="0">
+                  <div class="pan-thumb"></div>
+                </div>
                 <span id="image-preview-empty">No image loaded</span>
+              </div>
+              <div id="cutout-preview-panel" class="cutout-preview-panel" hidden>
+                <div class="section-heading compact-inline">
+                  <h3>Saved cutout</h3>
+                  <span id="cutout-preview-label" class="slider-value"></span>
+                </div>
+                <canvas id="cutout-preview-canvas" aria-label="Saved cutout preview"></canvas>
               </div>
             </section>
           </div>
         </section>
 
         <section id="psf-fit" class="page" aria-labelledby="page-title">
-          <div class="workspace-grid">
-            <form class="control-panel" data-form="psf-fit">
-              <div class="section-heading">
-                <h3>PSF settings</h3>
-                <p>Fit or load a PSF kernel for the lens model.</p>
-              </div>
-
-              <label>
-                PSF input
-                <input name="psf_input" type="text" value="Herculens/Data/SliceLens/F606_slice_psf.npy">
-              </label>
-
-              <label>
-                Star catalog
-                <input name="star_catalog" type="text" placeholder="Optional catalog path">
-              </label>
-
-              <div class="form-row">
-                <label>
-                  Kernel size
-                  <input name="kernel_size" type="number" value="31" step="2">
-                </label>
-                <label>
-                  Oversampling
-                  <input name="oversampling" type="number" value="1" step="1">
-                </label>
-              </div>
-
-              <label class="checkbox-row">
-                <input name="force_odd_kernel" type="checkbox" checked>
-                <span>Force odd kernel dimensions</span>
-              </label>
-
-              <div class="button-row">
-                <button type="button" class="primary-button" data-action="run" data-endpoint="/api/psf-fit/run">Run PSF fit</button>
-                <button type="button" class="secondary-button" data-action="load-latest" data-endpoint="/api/psf-fit/latest">Load latest</button>
-              </div>
-            </form>
-
+          <div class="psf-workspace">
             <section class="result-panel">
               <div class="section-heading">
-                <h3>PSF preview</h3>
-                <p>Kernel and residual products.</p>
+                <div>
+                  <h3>PSF preview</h3>
+                  <p>Kernel product or full-image candidate boxes.</p>
+                </div>
+                <div class="psf-preview-actions">
+                  <button type="button" class="secondary-button small" id="psf-clear-output">Clear output</button>
+                  <div class="segmented-control preview-switch" role="radiogroup" aria-label="PSF preview view">
+                    <label>
+                      <input type="radio" name="psf_preview_view" value="product" checked>
+                      <span>PSF product</span>
+                    </label>
+                    <label>
+                      <input type="radio" name="psf_preview_view" value="image">
+                      <span>Full image</span>
+                    </label>
+                  </div>
+                </div>
               </div>
-              <div class="image-stage" data-preview="psf-fit">
-                <span>No PSF product loaded</span>
+              <div class="psf-preview-layout">
+                <div class="image-stage psf-main-stage psf-preview-panel" id="psf-main-preview" data-preview="psf-fit" data-psf-preview-panel="product">
+                  <span>No PSF product loaded</span>
+                </div>
+                <div class="image-stage psf-main-stage psf-full-image-stage psf-preview-panel" id="psf-full-image-preview" data-psf-preview-panel="image" hidden>
+                  <div id="psf-full-image-frame" class="psf-full-image-frame" hidden>
+                    <img id="psf-full-image-img" alt="Full science image PSF preview">
+                    <div id="psf-full-image-overlay" class="psf-full-image-overlay" aria-hidden="true"></div>
+                  </div>
+                  <span id="psf-full-image-empty">Run Find stars, then switch here to inspect the full image.</span>
+                </div>
+                <div class="psf-candidates-panel">
+                  <div class="section-heading compact-inline">
+                    <h3>PSF cutouts</h3>
+                    <span id="psf-candidate-count" class="slider-value">0</span>
+                  </div>
+                  <div id="psf-candidate-list" class="psf-candidate-list">
+                    <span class="empty-list">Auto PSF candidates will appear here.</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="mask" class="page" aria-labelledby="page-title">
+          <div class="mask-workspace">
+            <section class="result-panel mask-result-panel">
+              <div class="section-heading">
+                <div>
+                  <h3>Mask Preview</h3>
+                  <p>Line mode fills a polygon after three clicks. Brush mode paints while dragging.</p>
+                </div>
+                <div class="mask-preview-actions">
+                  <label>
+                    Image
+                    <select id="mask-preview-source">
+                      <option value="image" selected>Original</option>
+                      <option value="subtracted">Lens light subtracted</option>
+                    </select>
+                  </label>
+                  <label>
+                    Colormap
+                    <select id="mask-preview-colormap">
+                      <option value="twilight" selected>Twilight</option>
+                      <option value="gray">Gray scale</option>
+                    </select>
+                  </label>
+                  <button type="button" class="secondary-button small" id="mask-load-image">Load image</button>
+                </div>
+              </div>
+              <div class="mask-preview-grid">
+                <div class="mask-stage">
+                  <canvas id="mask-image-canvas" aria-label="Cutout image for mask"></canvas>
+                  <canvas id="mask-overlay-canvas" aria-label="Mask overlay"></canvas>
+                  <div id="mask-conjugate-layer" class="mask-conjugate-layer" aria-hidden="true"></div>
+                  <span id="mask-empty">Project image or cutout will load automatically.</span>
+                </div>
               </div>
             </section>
           </div>
         </section>
 
         <section id="lens-model" class="page" aria-labelledby="page-title">
-          <div class="workspace-grid">
-            <form class="control-panel" data-form="lens-model">
+          <div class="lens-builder-grid">
+            <form class="control-panel lens-prior-panel" data-form="lens-model">
               <div class="section-heading">
-                <h3>SVI run</h3>
-                <p>Parametric first stage followed by pixelated source modeling.</p>
+                <h3>Prior builder</h3>
+                <p>Configure priors, then generate the executable NumPyro script.</p>
               </div>
 
-              <label>
-                Notebook/script
-                <input name="runner" type="text" value="Herculens/HerculensGUI/SliceLens_1chain_parametric_pixelated_svi.ipynb">
-              </label>
-
+              <details class="lens-config-group" id="lens-run-data-group" open>
+                <summary>Run and data</summary>
               <label>
                 Output directory
-                <input name="output_dir" type="text" value="Herculens/HerculensGUI/runs/slicelens_svi">
+                <input name="output_dir" type="text" placeholder="Default: current project folder">
               </label>
 
               <div class="form-row">
@@ -231,36 +910,429 @@
 
               <div class="form-row">
                 <label>
-                  Source grid scale
-                  <input name="source_grid_scale" type="number" value="0.6" step="0.05">
-                </label>
-                <label>
                   Seed
                   <input name="seed" type="number" value="100" step="1">
+                </label>
+                <label>
+                  SVI chains
+                  <input name="num_chains" type="number" value="1" step="1" min="1">
+                </label>
+              </div>
+
+              <div class="form-row">
+                <label>
+                  Supersample
+                  <input name="supersampling_factor" type="number" value="2" step="1" min="1">
                 </label>
               </div>
 
               <label class="checkbox-row">
-                <input name="use_best_pixel_size" type="checkbox" checked>
-                <span>Use get_best_pixel_size for pixelated source grid</span>
+                <input id="dspl-enabled" name="dspl_enabled" type="checkbox">
+                <span>Double Source Plane lens model</span>
               </label>
 
+              <div class="section-heading compact-inline">
+                <h3>RMS</h3>
+              </div>
+
+              <div class="prior-grid compact-prior-grid">
+                <label class="prior-field checkbox-prior-field" title="Use project RMS_map.fits if it exists">
+                  <span class="prior-label">RMS map</span>
+                  <input name="rms_mode" type="radio" value="map" checked>
+                </label>
+                <label class="prior-field checkbox-prior-field" title="Ignore RMS_map.fits and sample scalar RMS with LogUniform(rms * 0.8, rms * 1.2)">
+                  <span class="prior-label">scalar RMS</span>
+                  <input name="rms_mode" type="radio" value="scalar">
+                </label>
+                <label class="prior-field" title="Exposure time used if the FITS header has no exposure keyword">
+                  <span class="prior-label">t<sub>exp</sub></span>
+                  <input name="exposure_time" type="number" value="2260" step="0.1" min="0">
+                </label>
+                <label class="prior-field" title="Corner size used for RMS estimation and optional background subtraction">
+                  <span class="prior-label">corner px</span>
+                  <input name="background_subtract_corner" type="number" placeholder="off" step="1" min="0" value="5">
+                </label>
+                <label class="prior-field checkbox-prior-field" title="Subtract the median of the corner block from the data before modeling">
+                  <span class="prior-label">subtract bg</span>
+                  <input name="background_subtract_enabled" type="checkbox">
+                </label>
+              </div>
+              </details>
+
+              <details class="lens-config-group" id="lens-light-source-group">
+                <summary>Light models</summary>
+              <div class="section-heading compact-inline">
+                <h3>Lens light</h3>
+                <select name="light_profile" aria-label="Light model profile">
+                  <option value="MULTI_GAUSSIAN_ELLIPSE" selected>Multi Gaussian</option>
+                </select>
+              </div>
+
+              <div class="prior-grid compact-prior-grid">
+                <label class="prior-field" title="Number of Gaussian components for lens light">
+                  <span class="prior-label">N<sub>L</sub></span>
+                  <input name="n_gauss_lens" type="number" value="8" step="1" min="1">
+                </label>
+                <label class="prior-field" title="Lens-light Gaussian sigma lower bound">
+                  <span class="prior-label">&sigma;<sub>L</sub> min</span>
+                  <input name="lens_sigma_min" type="number" value="0.001" step="0.001" min="0">
+                </label>
+                <label class="prior-field" title="Lens-light Gaussian sigma upper bound">
+                  <span class="prior-label">&sigma;<sub>L</sub> max</span>
+                  <input name="lens_sigma_max" type="text" value="auto" placeholder="auto">
+                  <span id="lens-sigma-max-auto-value" class="slider-value">auto = --</span>
+                </label>
+                <label class="prior-field" title="Maximum absolute lens-light Gaussian center coordinate in x and y, relative to the image center">
+                  <span class="prior-label">center |x/y| max</span>
+                  <input name="lens_light_center_max_offset" type="number" value="0.4" step="0.01" min="0.001">
+                </label>
+                <label class="prior-field" title="Use the Mask-stage constrained MGE lens-light result as a prior start or as a fixed lens-light model">
+                  <span class="prior-label">MGE result</span>
+                  <select name="lens_light_external_mode">
+                    <option value="free" selected>Free fit</option>
+                    <option value="start">Start from Mask</option>
+                    <option value="fixed">Fix to Mask</option>
+                  </select>
+                </label>
+                <label class="prior-field" title="Path to kwargs_lens_light.pkl, relative to the current project folder unless absolute">
+                  <span class="prior-label">MGE kwargs</span>
+                  <input name="lens_light_external_path" type="text" value="lens_light_subtraction_result/kwargs_lens_light.pkl">
+                </label>
+                <label class="prior-field" title="Lens-light treatment during the parametric-source SVI stage; Follow MGE result preserves the legacy global selection">
+                  <span class="prior-label">Parametric MGE</span>
+                  <select name="lens_light_parametric_mode">
+                    <option value="" selected>Follow MGE result</option>
+                    <option value="free">Free fit</option>
+                    <option value="start">Start and fit</option>
+                    <option value="fixed">Fixed</option>
+                  </select>
+                </label>
+                <label class="prior-field" title="Lens-light treatment during the pixelated-source SVI stage; Start and fit initializes from the supplied MGE kwargs and then samples all lens-light parameters">
+                  <span class="prior-label">Pixelated MGE</span>
+                  <select name="lens_light_pixelated_mode">
+                    <option value="" selected>Follow MGE result</option>
+                    <option value="free">Free fit</option>
+                    <option value="start">Start and fit</option>
+                    <option value="fixed">Fixed</option>
+                  </select>
+                </label>
+              </div>
+              <div class="section-heading compact-inline">
+                <h3>Point sources</h3>
+                <select name="point_source_profile" aria-label="Point-source model profile">
+                  <option value="NONE" selected>None</option>
+                  <option value="IMAGE_POSITIONS">Image positions</option>
+                </select>
+              </div>
+
+              <div class="prior-grid compact-prior-grid">
+                <label class="prior-field" title="Gaussian position-prior width around each Source 1 conjugate point">
+                  <span class="prior-label">position &sigma;</span>
+                  <input name="point_source_pos_sigma" type="number" value="0.05" step="0.005" min="0">
+                </label>
+                <label class="prior-field" title="Hard position window around each Source 1 conjugate point">
+                  <span class="prior-label">position window</span>
+                  <input name="point_source_pos_window" type="number" value="0.2" step="0.01" min="0">
+                </label>
+                <label class="prior-field" title="Lower bound of the log10 point-source flux prior">
+                  <span class="prior-label">log<sub>10</sub> flux min</span>
+                  <input name="point_source_log10_amp_low" type="number" value="-3" step="0.1">
+                </label>
+                <label class="prior-field" title="Upper bound of the log10 point-source flux prior">
+                  <span class="prior-label">log<sub>10</sub> flux max</span>
+                  <input name="point_source_log10_amp_high" type="number" value="4.5" step="0.1">
+                </label>
+                <label class="prior-field checkbox-prior-field" title="Solve theta_E and EPL ellipticity magnitude so exactly two images map to one source position">
+                  <span class="prior-label">Exact two-image solver</span>
+                  <input name="exact_two_image_solver" type="checkbox">
+                </label>
+                <label class="prior-field" title="Newton initial value for Einstein radius">
+                  <span class="prior-label">solver &theta;<sub>E</sub> init</span>
+                  <input name="solver_initial_theta_E" type="number" value="0.8" step="0.01" min="0.0001">
+                </label>
+                <label class="prior-field" title="Newton initial EPL ellipticity magnitude">
+                  <span class="prior-label">solver |e| init</span>
+                  <input name="solver_initial_ellipticity" type="number" value="0.24" step="0.01" min="0.0001" max="0.95">
+                </label>
+              </div>
+              <p class="helper-text">IMAGE_POSITIONS follows the Source 1 conjugate points and starts each flux from its measured PSF value.</p>
+              <div class="section-heading compact-inline">
+                <h3>Source light</h3>
+              </div>
+
+              <div class="prior-grid compact-prior-grid">
+                <label class="prior-field" title="Number of Gaussian components for parametric source light">
+                  <span class="prior-label">N<sub>S</sub></span>
+                  <input name="n_gauss_source" type="number" value="1" step="1" min="1">
+                </label>
+                <label class="prior-field" title="Pixelated source grid scale">
+                  <span class="prior-label">grid<sub>S</sub></span>
+                  <input name="source_grid_scale" type="number" value="1" step="0.05">
+                </label>
+                <label class="prior-field" title="Pixelated source grid shape">
+                  <span class="prior-label">Npix<sub>S</sub></span>
+                  <input name="source_pixel_grid_shape" type="number" value="20" step="1" min="4">
+                </label>
+                <label class="prior-field" title="Display scaling used for source panels in model-result figures">
+                  <span class="prior-label">Source display</span>
+                  <select name="source_display">
+                    <option value="linear" selected>Linear</option>
+                    <option value="log">Log</option>
+                  </select>
+                </label>
+                <label class="prior-field checkbox-prior-field" title="Run the fixed-mass semilinear source inversion after single-plane SVI">
+                  <span class="prior-label">Semilinear source</span>
+                  <input name="run_semilinear" type="checkbox" checked>
+                </label>
+                <label class="prior-field checkbox-prior-field" title="Constrain pixelated Matern source pixels to be non-negative">
+                  <span class="prior-label">Source positivity</span>
+                  <input name="source_positive" type="checkbox" checked>
+                </label>
+                <label class="prior-field checkbox-prior-field" title="Apply the learned 10-term nonlinear brightness transform to the positive Matern source">
+                  <span class="prior-label">Nonlinear brightness</span>
+                  <input name="source_nonlinear_brightness" type="checkbox" checked>
+                </label>
+                <label class="prior-field checkbox-prior-field" title="Use I = exp(mu + g_Matern), with the tested log-Matern priors">
+                  <span class="prior-label">Log Matérn</span>
+                  <input name="source_log_brightness" type="checkbox">
+                </label>
+                <label class="prior-field checkbox-prior-field" title="Fit a positive, normalized, zero-centroid multiplicative Matérn correction to the PSF in the pixelated stage">
+                  <span class="prior-label">Multiplicative PSF correction</span>
+                  <input name="multiplicative_psf_correction" type="checkbox">
+                </label>
+                <label class="prior-field" title="Source-light Gaussian sigma lower bound">
+                  <span class="prior-label">&sigma;<sub>S</sub> min</span>
+                  <input name="source_sigma_min" type="number" value="0.001" step="0.001" min="0">
+                </label>
+                <label class="prior-field" title="Source-light Gaussian sigma upper bound">
+                  <span class="prior-label">&sigma;<sub>S</sub> max</span>
+                  <input name="source_sigma_max" type="number" value="0.2" step="0.05" min="0">
+                </label>
+              </div>
+
+              <div class="section-heading compact-inline dspl-prior-block">
+                <h3>Source2 light</h3>
+              </div>
+
+              <div class="prior-grid compact-prior-grid dspl-prior-block">
+                <label class="prior-field" title="Number of Gaussian components for source plane 2">
+                  <span class="prior-label">N<sub>S2</sub></span>
+                  <input name="n_gauss_source2" type="number" value="1" step="1" min="1">
+                </label>
+                <label class="prior-field" title="Source plane 2 pixelated grid scale">
+                  <span class="prior-label">grid<sub>2</sub></span>
+                  <input name="source2_grid_scale" type="number" value="1" step="0.05">
+                </label>
+                <label class="prior-field" title="Pixelated source plane 2 grid shape">
+                  <span class="prior-label">Npix<sub>S2</sub></span>
+                  <input name="source2_pixel_grid_shape" type="number" value="20" step="1" min="4">
+                </label>
+                <label class="prior-field" title="Source plane 2 Gaussian sigma lower bound">
+                  <span class="prior-label">&sigma;<sub>S2</sub> min</span>
+                  <input name="source2_sigma_min" type="number" value="0.001" step="0.001" min="0">
+                </label>
+                <label class="prior-field" title="Source plane 2 Gaussian sigma upper bound">
+                  <span class="prior-label">&sigma;<sub>S2</sub> max</span>
+                  <input name="source2_sigma_max" type="number" value="0.2" step="0.05" min="0">
+                </label>
+              </div>
+              </details>
+
+              <div id="lens-light-handoff-status" class="workflow-handoff" data-state="idle" role="status" aria-live="polite">
+                <span class="workflow-handoff-dot" aria-hidden="true"></span>
+                <span>Step 4 prior: free lens-light fit</span>
+              </div>
+
+              <details class="lens-config-group" id="lens-mass-group">
+                <summary>Mass model and DSPL</summary>
+              <div class="section-heading compact-inline">
+                <h3>Mass model</h3>
+                <select name="mass_profile" aria-label="Mass model profile">
+                  <option value="EPL_w_shear" selected>EPL_w_shear</option>
+                </select>
+              </div>
+
+              <div class="prior-grid compact-prior-grid">
+                <label class="prior-field" title="theta_E lower bound">
+                  <span class="prior-label">&theta;<sub>E</sub> min</span>
+                  <input name="theta_low" type="number" value="0.0" step="0.05">
+                </label>
+                <label class="prior-field" title="theta_E upper bound">
+                  <span class="prior-label">&theta;<sub>E</sub> max</span>
+                  <input name="theta_high" type="number" value="3.0" step="0.05">
+                </label>
+                <label class="prior-field" title="EPL slope lower bound">
+                  <span class="prior-label">&gamma; min</span>
+                  <input name="gamma_low" type="number" value="1.2" step="0.05">
+                </label>
+                <label class="prior-field" title="EPL slope upper bound">
+                  <span class="prior-label">&gamma; max</span>
+                  <input name="gamma_high" type="number" value="2.8" step="0.05">
+                </label>
+                <label class="prior-field" title="Symmetric lens center bound: x0,y0 in [-lim, +lim]">
+                  <span class="prior-label">XY lim</span>
+                  <input name="center_lim" type="number" value="0.2" step="0.01" min="0">
+                </label>
+                <label class="prior-field" title="Lens center Gaussian sigma">
+                  <span class="prior-label">&sigma;<sub>x0</sub></span>
+                  <input name="center_sigma" type="number" value="0.1" step="0.01" min="0.001">
+                </label>
+                <label class="prior-field" title="Ellipticity Gaussian sigma">
+                  <span class="prior-label">&sigma;<sub>e</sub></span>
+                  <input name="e_sigma" type="number" value="0.25" step="0.01" min="0.001">
+                </label>
+                <label class="prior-field" title="Symmetric ellipticity bound: e1,e2 in [-lim, +lim]">
+                  <span class="prior-label">e lim</span>
+                  <input name="e_lim" type="number" value="0.2" step="0.01" min="0">
+                </label>
+                <label class="prior-field" title="External shear strength prior: |gamma_ext| in [0, max], with position angle uniform in [0, pi)">
+                  <span class="prior-label">|&gamma;<sub>ext</sub>| max</span>
+                  <input name="shear_lim" type="number" value="0.2" step="0.01" min="0">
+                </label>
+              </div>
+
+              <div class="lens-extra-mass-section">
+                <div class="section-heading compact-inline">
+                  <h3>Lens-plane components</h3>
+                  <div class="lens-extra-mass-add">
+                    <select id="lens-extra-mass-profile" aria-label="Additional lens-plane mass profile">
+                      <option value="SIS" selected>SIS</option>
+                      <option value="SIE">SIE</option>
+                      <option value="FIXED_MASS_MAP">Fixed mass map</option>
+                    </select>
+                    <button
+                      type="button"
+                      class="secondary-button small lens-extra-mass-add-button"
+                      id="lens-extra-mass-add"
+                      title="Add mass profile"
+                      aria-label="Add mass profile"
+                    >+ Add</button>
+                  </div>
+                </div>
+                <input id="lens-plane-mass-components" name="lens_plane_mass_components" type="hidden" value="[]">
+                <div id="lens-extra-mass-list" class="lens-extra-mass-list">
+                  <span class="empty-list">No additional mass profiles.</span>
+                </div>
+              </div>
+
+              <div class="section-heading compact-inline dspl-prior-block">
+                <h3>DSPL</h3>
+              </div>
+
+              <div class="prior-grid compact-prior-grid dspl-prior-block">
+                <label class="prior-field" title="Eta lower bound for double source plane lensing">
+                  <span class="prior-label">&eta; min</span>
+                  <input name="eta_low" type="number" value="1" step="0.01">
+                </label>
+                <label class="prior-field" title="Eta upper bound for double source plane lensing">
+                  <span class="prior-label">&eta; max</span>
+                  <input name="eta_high" type="number" value="2.5" step="0.01">
+                </label>
+                <label class="prior-field" title="SIS Einstein radius lower bound on source plane 1">
+                  <span class="prior-label">&theta;<sub>SIS</sub> min</span>
+                  <input name="sis_theta_low" type="number" value="0.0" step="0.01">
+                </label>
+                <label class="prior-field" title="SIS Einstein radius upper bound on source plane 1">
+                  <span class="prior-label">&theta;<sub>SIS</sub> max</span>
+                  <input name="sis_theta_high" type="number" value="1.0" step="0.01">
+                </label>
+                <label class="prior-field checkbox-prior-field" title="Apply source arc masks in DSPL model and lensed arc panels">
+                  <span class="prior-label">apply mask</span>
+                  <input name="apply_lensed_arc_mask" type="checkbox" checked>
+                </label>
+              </div>
+              </details>
+
               <div class="button-row">
-                <button type="button" class="primary-button" data-action="run" data-endpoint="/api/lens-model/run">Run lens model</button>
-                <button type="button" class="secondary-button" data-action="load-latest" data-endpoint="/api/lens-model/latest">Load latest</button>
+                <button type="button" class="secondary-button" id="lens-generate-code">Generate code</button>
+                <button type="button" class="secondary-button" id="lens-clear-code">Clear script</button>
               </div>
             </form>
 
-            <section class="result-panel">
+            <section class="result-panel lens-code-panel">
               <div class="section-heading">
-                <h3>Model result</h3>
-                <p>Four-panel visualization and loss curves.</p>
+                <div>
+                  <h3>Generated script</h3>
+                  <p>Run lens model executes this generated Python script.</p>
+                </div>
+                <button type="button" class="secondary-button" id="lens-edit-code">Edit script</button>
               </div>
-              <div class="image-stage model-stage" data-preview="lens-model">
-                <img src="../runs/slicelens_svi_2k/20260425_144805_four_panel_comparison.png" alt="Latest lens model comparison">
+              <div class="lens-script-cutout-panel">
+                <div class="section-heading compact lens-script-cutout-heading" hidden>
+                  <h4>Image cutout</h4>
+                  <span id="lens-script-cutout-status">No project cutout loaded.</span>
+                </div>
+                <div class="lens-script-cutout-stage">
+                  <div class="lens-script-image-pane">
+                    <div class="lens-script-image-stack">
+                      <canvas id="lens-script-cutout-canvas"></canvas>
+                      <canvas id="lens-script-cutout-overlay"></canvas>
+                    </div>
+                    <span id="lens-script-cutout-empty" class="empty-list"></span>
+                  </div>
+                  <div class="lens-script-image-pane">
+                    <div class="lens-script-image-stack">
+                      <canvas id="lens-script-subtracted-canvas"></canvas>
+                    </div>
+                    <span id="lens-script-subtracted-empty" class="empty-list"></span>
+                  </div>
+                </div>
+              </div>
+              <pre class="code-preview"><code id="lens-generated-code" class="language-python">Click Generate code to build the Lens Model script.</code></pre>
+              <textarea id="lens-script-editor" class="script-editor language-python" spellcheck="false" hidden></textarea>
+              <div class="button-row lens-run-row">
+                <button type="button" class="primary-button" id="lens-run-model" data-action="run" data-endpoint="/api/lens-model/run">Run lens model</button>
+                <button type="button" class="secondary-button" id="lens-run-gpu-model" data-action="run-gpu" data-endpoint="/api/lens-model/run-gpu">Run GPU lens model</button>
+                <button type="button" class="secondary-button" id="lens-run-all-gpu-model" data-action="run-all-gpu" data-endpoint="/api/lens-model/run-all-gpu">Run allGPU lens model</button>
+                <button type="button" class="secondary-button" id="lens-stop-run" disabled>Stop</button>
+              </div>
+              <div id="lens-progress" class="progress-panel" hidden>
+                <div class="progress-row">
+                  <span id="lens-progress-label">Lens model idle</span>
+                  <span id="lens-progress-percent">0%</span>
+                </div>
+                <div class="stage-progress">
+                  <div class="progress-row">
+                    <span id="lens-parametric-progress-label">Parametric SVI pending</span>
+                    <span id="lens-parametric-progress-percent">0%</span>
+                  </div>
+                  <div class="progress-track">
+                    <div id="lens-parametric-progress-bar" class="progress-bar"></div>
+                  </div>
+                </div>
+                <div class="stage-progress">
+                  <div class="progress-row">
+                    <span id="lens-pixelated-progress-label">Pixelated SVI pending</span>
+                    <span id="lens-pixelated-progress-percent">0%</span>
+                  </div>
+                  <div class="progress-track">
+                    <div id="lens-pixelated-progress-bar" class="progress-bar"></div>
+                  </div>
+                </div>
               </div>
             </section>
           </div>
+
+          <section class="result-panel lens-result-panel">
+              <div class="section-heading">
+                <div>
+                  <h3>Model result</h3>
+                  <p>Model visualization appears here after the generated script completes.</p>
+                </div>
+                <label class="chain-select-label" id="lens-chain-select-label" hidden>
+                  Result
+                  <select id="lens-chain-select"></select>
+                </label>
+                <label class="chain-select-label">
+                  Score
+                  <input id="lens-result-rating" type="number" min="0" max="5" step="1" value="0">
+                </label>
+              </div>
+              <div class="image-stage model-stage" data-preview="lens-model">
+                <span class="empty-list">No model result loaded for this project.</span>
+              </div>
+              <div id="lens-mass-summary" class="mass-summary-panel" hidden></div>
+          </section>
         </section>
 
         <section class="log-panel" aria-label="Run log">
@@ -273,6 +1345,7 @@
       </main>
     </div>
 
-    <script src="./app.js"></script>
-  </body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="./app.js?v=20260922-mask-preflight"></script>
+</body>
 </html>
